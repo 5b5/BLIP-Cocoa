@@ -22,7 +22,7 @@
 
 @implementation BLIPResponse
 {
-    void (^_onComplete)();
+    void (^_onComplete)(BLIPResponse*);
 }
 
 - (instancetype) _initWithRequest: (BLIPRequest*)request {

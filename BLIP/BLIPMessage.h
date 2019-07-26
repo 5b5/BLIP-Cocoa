@@ -52,7 +52,7 @@ NSError *BLIPMakeError( int errorCode, NSString *message, ... ) __attribute__ ((
 @property (strong) void (^onDataSent)(BLIPMessage*, uint64_t totalBytesSent);
 
 /** Called when the message has been completely sent over the socket. */
-@property (strong) void (^onSent)(BLIPMessage*);
+@property (strong) void (^onSent)(void);
 
 /** This message's serial number in its connection.
     A BLIPRequest's number is initially zero, then assigned when it's sent.

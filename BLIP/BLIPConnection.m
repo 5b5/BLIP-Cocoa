@@ -98,7 +98,7 @@ static char kQueueSpecificKey = 0;
 }
 
 
-- (void) _onDelegateQueue: (void (^)())block {
+- (void) _onDelegateQueue: (void (^)(void))block {
     ++_pendingDelegateCalls;
 #if DEBUG
     if (_pendingDelegateCalls > _maxPendingDelegateCalls) {
@@ -125,7 +125,7 @@ static char kQueueSpecificKey = 0;
 
 - (void) _endDelegateCall {
     dispatch_async(_transportQueue, ^{
-        if (--_pendingDelegateCalls == 0)
+        if (--self->_pendingDelegateCalls == 0)
             [self updateActive];
     });
 }
@@ -353,12 +353,12 @@ static char kQueueSpecificKey = 0;
         dispatch_async(_delegateQueue, ^{
             frame = [msg nextFrameWithMaxSize: (uint16_t)frameSize moreComing: &moreComing];
             BOOL requeue = !msg._needsAckToContinue;
-            void (^onSent)() = moreComing ? nil : msg.onSent;
-            dispatch_async(_transportQueue, ^{
+            void (^onSent)(void) = moreComing ? nil : msg.onSent;
+            dispatch_async(self->_transportQueue, ^{
                 // SHAZAM! Send the frame to the transport:
                 if (frame)
                     [self sendFrame: frame];
-                _sendingMsg = nil;
+                self->_sendingMsg = nil;
 
                 if (moreComing) {
                     // add the message back so it can send its next frame later:
@@ -523,7 +523,7 @@ static char kQueueSpecificKey = 0;
                 return [self _closeWithError: BLIPMakeError(kBLIPError_BadFrame, @"Bad ACK body")];
             [self _onDelegateQueue: ^{
                 BOOL ok = [msg _receivedAck: bytesReceived];
-                dispatch_async(_transportQueue, ^{
+                dispatch_async(self->_transportQueue, ^{
                     if (ok)
                         [self _unpauseMessage: msg];
                     else
@@ -550,7 +550,7 @@ static char kQueueSpecificKey = 0;
    [self _onDelegateQueue: ^{
         BOOL ok = [message _receivedFrameWithFlags: flags body: body];
         if (!ok) {
-            dispatch_async(_transportQueue, ^{
+            dispatch_async(self->_transportQueue, ^{
                 [self _closeWithError: BLIPMakeError(kBLIPError_BadFrame,
                                                      @"Couldn't parse message frame")];
             });
@@ -570,21 +570,21 @@ static char kQueueSpecificKey = 0;
 - (void) onRequestProfile: (NSString*)profile sendDelegateAction: (SEL)action {
     [self _onDelegateQueue: ^{
         if (action) {
-            Assert([_delegate respondsToSelector: action]);
-            if (!_registeredActions)
-                _registeredActions = [NSMutableDictionary new];
-            _registeredActions[profile] = NSStringFromSelector(action);
+            Assert([self->_delegate respondsToSelector: action]);
+            if (!self->_registeredActions)
+                self->_registeredActions = [NSMutableDictionary new];
+            self->_registeredActions[profile] = NSStringFromSelector(action);
         } else {
-            [_registeredActions removeObjectForKey: profile];
+            [self->_registeredActions removeObjectForKey: profile];
         }
     }];
 }
 
 - (void) registerDelegateActions: (NSDictionary*)actions {
     [self _onDelegateQueue: ^{
-        if (!_registeredActions)
-            _registeredActions = [NSMutableDictionary new];
-        [_registeredActions addEntriesFromDictionary: actions];
+        if (!self->_registeredActions)
+            self->_registeredActions = [NSMutableDictionary new];
+        [self->_registeredActions addEntriesFromDictionary: actions];
     }];
 }
 
